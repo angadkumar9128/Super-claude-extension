@@ -10,10 +10,10 @@ const config = await loadConfig();
 const server = new McpServer({ name: "supertools-mcp", version: "0.1.0" });
 registerFilesystemTools(server, config.projectRoot);
 registerTerminalTool(server, config.projectRoot, {
-  enabled: config.allowTerminal, timeoutMs: config.terminalTimeoutMs,
+  enabled: config.allowTerminal,
+  timeoutMs: config.terminalTimeoutMs,
   maxOutputChars: config.terminalMaxOutputChars
 });
 registerBrowserTools(server);
 registerGitHubTools(server, config.githubToken);
 await server.connect(new StdioServerTransport());
-}
