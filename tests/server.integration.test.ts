@@ -55,5 +55,27 @@ describe("SuperTools MCP server integration", () => {
       arguments: { shell: "powershell", command: "Write-Output should-not-run", cwd: ".", approved: true }
     });
     expect(terminal.isError).toBe(true);
+
+    if (process.platform === "win32") {
+      await client.close();
+      client = undefined;
+      const enabledTransport = new StdioClientTransport({
+        command: process.execPath,
+        args: [path.resolve("dist/index.js")],
+        env: { ...env, PROJECT_ROOT: root, ALLOW_TERMINAL: "true" }
+      });
+      client = new Client({ name: "supertools-powershell-test", version: "1.0.0" });
+      await client.connect(enabledTransport);
+      const powershell = await client.callTool({
+        name: "run_project_command",
+        arguments: {
+          shell: "powershell",
+          command: "Write-Output 'supertools-powershell-ok'",
+          cwd: ".",
+          approved: true
+        }
+      });
+      expect(JSON.stringify(powershell)).toContain("supertools-powershell-ok");
+    }
   }, 20000);
 });
