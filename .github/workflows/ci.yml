@@ -25,8 +25,7 @@ jobs:
       - name: Unit tests
         run: npm test
       - name: Dependency audit
-        run: npm audit --json > npm-audit.json
-        continue-on-error: true
+        run: npm audit --audit-level=high --json > npm-audit.json
       - name: Summarize dependency audit
         if: always()
         run: node -e "const a=JSON.parse(require('node:fs').readFileSync('npm-audit.json','utf8')); for (const [n,v] of Object.entries(a.vulnerabilities || {})) console.log(n + ':' + v.severity + '; direct=' + v.isDirect + '; fix=' + JSON.stringify(v.fixAvailable))"
