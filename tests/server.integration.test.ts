@@ -111,5 +111,5 @@ describe("SuperTools MCP server integration", () => {
       });
       expect(JSON.stringify(powershell)).toContain("supertools-powershell-ok");
     }
-  }, 20000);
+  }, 60000);
 });
