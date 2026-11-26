@@ -1,139 +1,362 @@
 # SuperTools MCP
 
-A local MCP server that gives a compatible MCP client tools for working inside one selected project folder on Windows.
+**SuperTools MCP** is a local [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that lets an AI assistant work with a project on your computer. It provides project file tools, optional command execution, Playwright-powered Chromium browser automation, and optional read-only GitHub tools.
 
-## What it can do
+It is designed to run locally and connect to an MCP-compatible desktop client such as Claude Desktop.
 
-- List, read, and write files inside the configured project folder.
-- Run approved commands using **Windows PowerShell** or **WSL2 Bash**.
-- Automate a headless Chromium browser with Playwright: tabs, navigation, clicks, forms, keyboard, scrolling, screenshots, downloads, PDF export, console/network diagnostics, accessibility inspection, and a restricted DevTools Protocol interface.
-- Read GitHub repository metadata and repository files when a GitHub token is configured.
+> **Project status:** Active development. The build and automated test suite have passed on GitHub Actions for Windows and Ubuntu. Browser workflows should still be tested with your own MCP client and websites before relying on them for important tasks.
+
+## Contents
+
+- [Features](#features)
+- [How it works](#how-it-works)
+- [Requirements](#requirements)
+- [Install on Windows](#install-on-windows)
+- [Configure your project folder](#configure-your-project-folder)
+- [Connect Claude Desktop](#connect-claude-desktop)
+- [Use the tools](#use-the-tools)
+- [Optional features](#optional-features)
+- [Security and privacy](#security-and-privacy)
+- [Troubleshooting](#troubleshooting)
+- [Development and tests](#development-and-tests)
+- [Project structure](#project-structure)
+
+## Features
+
+### Project files
+- List and read files inside one configured project folder.
+- Write files inside that folder with explicit approval.
+- Reject path traversal and symlink escapes from the configured folder.
+
+### Browser automation
+Powered by **Playwright** and **headless Chromium**:
+- Start and close isolated browser sessions.
+- Open, navigate, reload, and manage multiple tabs.
+- Click elements, fill forms, type text, press keys, select options, hover, and scroll.
+- Wait for elements and inspect page content and element attributes.
+- Capture viewport or full-page PNG/JPEG screenshots.
+- Collect console messages, JavaScript page errors, and network request/response diagnostics.
+- Inspect the accessibility tree.
+- Run JavaScript in the page and send a restricted set of Chrome DevTools Protocol commands.
+- Upload project files to file inputs and save browser downloads inside the project folder.
+- Export a page to PDF.
+
+Browser sessions are temporary and isolated. They do not use your personal Chrome profile, saved passwords, or existing browser cookies.
+
+### Optional command execution
+- Run PowerShell commands on Windows.
+- Run Bash commands through WSL2 when WSL2 is installed.
+- Terminal access is disabled by default and requires explicit approval for each command.
+
+### Optional GitHub access
+- Read repository metadata.
+- Read text files from a repository and branch.
+- GitHub tools are registered only when a GitHub token is configured.
+
+## How it works
+
+~~~text
+AI client (for example, Claude Desktop)
+                 |
+                 | MCP over local stdio
+                 v
+          SuperTools MCP
+          /      |       \
+    Project   Playwright  Optional
+     files    + Chromium  GitHub API
+                 |
+             Websites
+~~~
+
+The MCP server runs as a local Node.js process. Your MCP client starts it and communicates with it over standard input/output (stdio). The server uses PROJECT_ROOT to decide which folder its file tools can access.
 
 ## Requirements
 
-- Windows 10 or 11
-- Node.js 20 or newer
-- PowerShell (included with Windows; PowerShell 7 is recommended)
-- WSL2 only if you want to use the WSL shell option
-- A compatible MCP client, such as Claude Desktop
-- Chromium for browser tools (installed with `npx playwright install chromium`)
+For the documented Windows setup:
 
-## 1. Download the project
+- Windows 10 or Windows 11.
+- Node.js 20 or newer (the current Node.js LTS release is recommended).
+- npm (included with Node.js).
+- Git, to clone and update the repository.
+- Claude Desktop or another MCP client that supports local stdio servers.
+- Internet access during installation so npm and Playwright can download dependencies and Chromium.
+
+Optional:
+- WSL2, only if you want to use the WSL shell option.
+- A fine-grained GitHub personal access token, only if you want the GitHub tools.
+
+Check your installations in PowerShell:
+
+~~~powershell
+node --version
+npm --version
+git --version
+~~~
+
+## Install on Windows
+
+### 1. Clone the repository
 
 Open PowerShell and run:
 
-```powershell
+~~~powershell
 git clone https://github.com/angadkumar9128/Super-claude-extension.git
 cd Super-claude-extension
+~~~
+
+### 2. Install Node.js dependencies
+
+~~~powershell
 npm install
+~~~
+
+### 3. Install Chromium for Playwright
+
+~~~powershell
 npx playwright install chromium
-```
+~~~
 
-## 2. Choose the project folder the tools may manage
+This downloads the browser binary used by the browser tools. Installing Node.js alone does not install Chromium.
 
-Create your local environment file:
+### 4. Build and run the tests
 
-```powershell
+~~~powershell
+npm run build
+npm test
+~~~
+
+If both commands complete successfully, the TypeScript build and automated tests have passed on your computer.
+
+## Configure your project folder
+
+SuperTools needs an explicit folder to work in. This is the project folder the file tools can list, read, and write. It is **not automatically the SuperTools MCP source folder**.
+
+From the SuperTools repository directory, create your local environment file:
+
+~~~powershell
 Copy-Item .env.example .env
 notepad .env
-```
+~~~
 
-In .env, set PROJECT_ROOT to the full path of the project you want the MCP server to work with. Example:
+Set PROJECT_ROOT to the full path of the project you want the AI assistant to work with. For example:
 
-```env
+~~~env
 PROJECT_ROOT=C:\Users\YourName\Documents\MyApp
 ALLOW_TERMINAL=false
 TERMINAL_TIMEOUT_MS=30000
 TERMINAL_MAX_OUTPUT_CHARS=20000
-```
+GITHUB_TOKEN=
+~~~
 
-Use a real folder path on your computer. Do not use the SuperTools MCP repository path unless that is the project you intend to manage.
+Replace the example path with a real folder on your computer. Keep ALLOW_TERMINAL=false initially. The .env file contains local settings and secrets; never commit it to GitHub or share its contents.
 
-## 3. Build and test
+## Connect Claude Desktop
 
-Run these commands from the SuperTools MCP repository folder:
+1. Make sure you have completed the installation and build steps above.
+2. Find the full path to this repository on your computer. For example: C:\Users\YourName\Super-claude-extension.
+3. Open the Claude Desktop MCP configuration file. The location and menu for opening it can vary by Claude Desktop version; use Claude Desktop's developer or MCP settings if available.
+4. Add the following server entry inside the top-level mcpServers object. Replace both example paths with your actual paths.
 
-```powershell
-npm test
-npm run build
-```
+~~~json
+{
+  "mcpServers": {
+    "supertools": {
+      "command": "node",
+      "args": [
+        "C:\\Users\\YourName\\Super-claude-extension\\dist\\index.js"
+      ],
+      "env": {
+        "PROJECT_ROOT": "C:\\Users\\YourName\\Documents\\MyApp",
+        "ALLOW_TERMINAL": "false"
+      }
+    }
+  }
+}
+~~~
 
-Start the server manually to check that it launches:
+5. Save the configuration and completely restart Claude Desktop.
+6. Open a new conversation and ask Claude to list files in your configured project folder. Approve any permission prompt shown by Claude Desktop.
 
-```powershell
-npm start
-```
+**Important:** The paths in the JSON configuration must be absolute paths, and each Windows backslash must be doubled. If you already have an mcpServers object, add the supertools entry to it rather than replacing your other server entries.
 
-The MCP server uses standard input/output for its client connection. When testing manually, it may appear to wait silently; that is normal. Press Ctrl+C to stop it.
+For a shorter setup reference, see [docs/CLAUDE-DESKTOP.md](docs/CLAUDE-DESKTOP.md).
 
-## 4. Connect it to Claude Desktop
+## Use the tools
 
-Open docs/CLAUDE-DESKTOP.md and follow its configuration example. Replace the example paths with the actual absolute paths on your computer, save the configuration, and restart Claude Desktop.
+After the MCP server connects, the client can call the tools below. The assistant chooses the relevant tool based on your request.
 
-After connecting, ask the MCP client to list the files in your selected project. The available tools include:
+### Project files
+- **list_project_files** — list files and folders in the selected project.
+- **read_project_file** — read a project file.
+- **write_project_file** — write a project file; requires explicit approval.
 
-- `list_project_files`
-- `read_project_file`
-- `write_project_file`
-- `run_project_command`
-- `browser_start_session`, `browser_close_session`
-- `browser_open_page`, `browser_new_tab`, `browser_list_tabs`, `browser_close_tab`
-- `browser_navigate`, `browser_navigate_history`
-- `browser_click`, `browser_fill`, `browser_type`, `browser_press_key`, `browser_select_option`, `browser_set_checked`, `browser_hover`, `browser_scroll`, `browser_wait_for`
-- `browser_get_page_content`, `browser_get_element_info`, `browser_screenshot`
-- `browser_get_console_logs`, `browser_get_network_events`, `browser_clear_diagnostics`
-- `browser_evaluate`, `browser_devtools_command`, `browser_get_accessibility_tree`
-- `browser_set_viewport`, `browser_set_dialog_action`, `browser_upload_file`, `browser_download_file`, `browser_save_pdf`
-- `github_get_repository` and `github_read_file` (only when GITHUB_TOKEN is configured)
+### Browser
+Start with **browser_start_session**. It returns a sessionId and initial pageId; pass these identifiers to later browser calls to select the session and tab.
 
-## 5. Use PowerShell or WSL2
+| Tool | Purpose |
+|---|---|
+| browser_start_session / browser_close_session | Start or close an isolated Chromium session |
+| browser_open_page / browser_navigate | Open a URL or navigate a tab |
+| browser_new_tab / browser_list_tabs / browser_close_tab | Manage tabs |
+| browser_navigate_history | Go back, forward, or reload |
+| browser_click / browser_fill / browser_type | Interact with page elements |
+| browser_press_key / browser_select_option / browser_set_checked | Keyboard, select, checkbox, and radio interactions |
+| browser_hover / browser_scroll / browser_wait_for | Hover, scroll, and wait for elements |
+| browser_get_page_content / browser_get_element_info | Read page content and inspect elements |
+| browser_screenshot | Capture a viewport or full-page screenshot |
+| browser_get_console_logs | Read console messages and uncaught page errors |
+| browser_get_network_events | Inspect request, response, failure, and blocked-request events |
+| browser_clear_diagnostics | Clear stored diagnostic events |
+| browser_get_accessibility_tree | Inspect the accessibility tree |
+| browser_evaluate | Evaluate JavaScript in the current page |
+| browser_devtools_command | Send an allowlisted Chrome DevTools Protocol command |
+| browser_set_viewport / browser_set_dialog_action | Change viewport or dialog handling |
+| browser_upload_file / browser_download_file | Transfer files within the configured project boundary |
+| browser_save_pdf | Export the page as a PDF |
 
-Terminal access is **off by default**. First test file tools and browser tools without enabling it.
+Browser file uploads and downloads use paths relative to PROJECT_ROOT. Uploads are limited to 25 MB and downloads to 100 MB. Screenshots are returned to the MCP client as image content; they are not automatically saved to disk.
 
-When you are ready to enable terminal commands, change this in your local .env:
+### Terminal
+- **run_project_command** — run a PowerShell or WSL2 command, if terminal access has been enabled.
 
-```env
+### GitHub
+- **github_get_repository** — read repository metadata.
+- **github_read_file** — read a file from a repository.
+
+GitHub tools are not available unless GITHUB_TOKEN is configured.
+
+## Optional features
+
+### Enable terminal commands
+
+**Keep terminal disabled unless you genuinely need it.** To enable it, edit the local .env file:
+
+~~~env
 ALLOW_TERMINAL=true
-```
+~~~
 
-Restart the MCP client/server. For each command, the client must pass explicit approval (`approved=true`). Choose:
+Restart the MCP server or Claude Desktop after changing the setting. Each terminal call must also include explicit approved=true.
 
-- `powershell` to run a Windows PowerShell command, such as `npm test`.
-- `wsl` to run a Bash command through WSL2, such as `pwd && ls`.
+Choose:
+- **powershell** for Windows PowerShell commands.
+- **wsl** for Bash commands through WSL2.
 
-The command's working directory must be inside PROJECT_ROOT. Review every command before approving it.
+The requested working directory must be inside PROJECT_ROOT. Review every command before approving it. Terminal commands run with your Windows or WSL user's permissions; the project-folder setting does not sandbox the shell.
 
-## 6. Optional GitHub read access
+### Enable GitHub read tools
 
-Create a fine-grained GitHub token limited to only the repositories and read permissions needed. Put it in your local .env file:
+1. Create a fine-grained GitHub personal access token.
+2. Limit it to only the repositories you need and grant the minimum read permissions required.
+3. Set the token in your local .env file:
 
-```env
-GITHUB_TOKEN=your_token_here
-```
+~~~env
+GITHUB_TOKEN=github_pat_your_token_here
+~~~
 
-Restart the MCP server after changing .env. Never commit .env or paste your token into source code. Without a token, the GitHub tools are not registered.
+4. Restart the MCP server.
 
-## Important security limitations
+Do not put the token in source code, commit it, or paste it into a chat. If you do not configure a token, the GitHub tools are simply not registered.
 
-PROJECT_ROOT confines the server's **file tools**, but it does not sandbox PowerShell or WSL2. Terminal commands run with the permissions of your Windows or WSL user and may access other files, use the network, or start other processes. The command denylist is not a complete security boundary.
+## Security and privacy
 
-For sensitive work, use a dedicated low-privilege OS account or a properly isolated container/VM with restricted mounts and network access. Keep terminal disabled until you understand this limitation. See docs/SECURITY.md.
+Read [docs/SECURITY.md](docs/SECURITY.md) before enabling terminal access or using browser automation on sensitive sites.
 
-## Current integration scope
+Key points:
 
-This repository includes a Claude Desktop setup example. Other MCP clients must support connecting to a local stdio MCP server and have their own local-server configuration mechanism. Do not assume the server is automatically connected to ChatGPT just because the code is on GitHub.
+- **File tools:** paths are restricted to PROJECT_ROOT, with traversal and symlink escape checks. This boundary applies to file tools, not terminal commands.
+- **Terminal:** disabled by default. When enabled, commands run as your OS user and can access resources beyond the project folder. Approval and command filtering are not a complete sandbox.
+- **Browser:** sessions are isolated and do not reuse your personal Chrome profile or saved credentials. Requests to many local/private destinations are blocked, but this network filter is defense in depth, not a substitute for OS-level network isolation.
+- **JavaScript and DevTools:** page JavaScript can act with the permissions of the current website. Use these features only on sites you trust. DevTools commands are allowlisted rather than unrestricted.
+- **Files transferred by the browser:** uploads and downloads are limited to the configured project folder and have size limits.
+- **Secrets:** keep .env private and use least-privilege tokens.
 
-## Browser automation capabilities
+For sensitive projects, use a dedicated low-privilege operating-system account or an appropriately isolated container/virtual machine with restricted mounts and network access.
 
-Start with `browser_start_session`, then use the returned `sessionId` and `pageId` with the browser tools. The browser runs headlessly in Chromium. Sessions are isolated and in-memory; cookies and browser storage are not persisted after the session closes.
+## Troubleshooting
 
-The browser toolset supports page and tab management, navigation history, CSS/text locator actions, form filling, keyboard input, scrolling, selector waits, visible text and HTML extraction, element inspection, PNG/JPEG screenshots returned as image content, console and page-error logs, request/response/failure diagnostics, a restricted Chrome DevTools Protocol command allowlist, accessibility-tree inspection, JavaScript expression evaluation, file upload from inside PROJECT_ROOT, file download to PROJECT_ROOT, and PDF export.
+### Claude Desktop does not show SuperTools
 
-Important limits:
-- Browser sessions are not logged into your personal Chrome profile and do not reuse its cookies.
-- DevTools Protocol commands are intentionally allowlisted; this is not unrestricted access to every Chromium internal command.
-- JavaScript evaluation can execute code in the page and should only be used on websites you trust.
-- Downloads and uploads are restricted to PROJECT_ROOT; uploads are limited to 25 MB and downloads to 100 MB.
-- The network guard blocks many private/local destinations, but is defense in depth, not a replacement for OS-level network isolation.
+- Confirm the path to dist/index.js in the configuration is correct.
+- Confirm you ran npm install and npm run build.
+- Confirm PROJECT_ROOT points to an existing folder.
+- Check that the JSON is valid and Windows paths use doubled backslashes.
+- Completely quit and restart Claude Desktop.
+- Check Claude Desktop's MCP/server logs for startup errors.
 
-This is an initial development version. Build and test it locally before relying on it for important work.
+### Error: PROJECT_ROOT must be set
+
+Set PROJECT_ROOT in the MCP server's environment configuration or local .env file. It must point to an existing directory.
+
+### Browser tools fail to launch
+
+Run these commands from the repository folder:
+
+~~~powershell
+npx playwright install chromium
+npm run build
+~~~
+
+If Chromium still fails to launch, check the error reported by Playwright and confirm your computer allows the browser binary to run.
+
+### Terminal tool says it is disabled
+
+Set ALLOW_TERMINAL=true in the server environment only if you understand the security implications, then restart the MCP server. Each command still requires explicit approval.
+
+### WSL command fails
+
+Confirm WSL2 is installed and a Linux distribution is available. PowerShell tools do not require WSL2.
+
+## Development and tests
+
+From the repository directory:
+
+~~~powershell
+npm install
+npx playwright install chromium
+npm run build
+npm test
+~~~
+
+Useful scripts:
+
+| Command | Description |
+|---|---|
+| npm run build | Compile TypeScript into dist/ |
+| npm test | Run the Vitest test suite |
+| npm start | Start the compiled MCP server |
+| npm run dev | Run the TypeScript entry point with tsx |
+
+The MCP server communicates over stdio. Running npm start directly in a terminal may appear to wait without printing a normal message; this is expected while it waits for an MCP client. Press Ctrl+C to stop the process.
+
+Continuous integration runs the build and tests on GitHub-hosted Windows and Ubuntu runners. Passing CI is useful verification, but it does not replace testing the installation and browser workflows on your own machine.
+
+## Project structure
+
+~~~text
+src/
+  index.ts             MCP server entry point
+  config.ts            Environment and project configuration
+  tools/
+    filesystem.ts      Project file tools
+    terminal.ts        Optional PowerShell / WSL2 tool
+    browser.ts         Playwright and Chromium tools
+    github.ts          Optional GitHub read tools
+  security/
+    network.ts         Browser network destination checks
+    policy.ts          Terminal command policy
+    audit.ts           Operational audit logging
+  utils/
+    paths.ts           Project path validation
+tests/                 Automated tests
+docs/
+  CLAUDE-DESKTOP.md    Claude Desktop setup notes
+  SECURITY.md          Security model and limitations
+~~~
+
+## Contributing
+
+Issues and pull requests are welcome. Please include clear reproduction steps for bugs and add or update tests when changing tool behavior.
+
+## License
+
+No license file is currently included. Unless a license is added to this repository, do not assume that the code is licensed for redistribution or commercial use.
