@@ -73,8 +73,8 @@ describe("SuperTools MCP server integration", () => {
     });
     const browserStartText = (browserStart.content as Array<{ type: string; text?: string }>)
       .find((item) => item.type === "text")?.text || "";
-    const sessionId = /sessionId: ([^\\n]+)/.exec(browserStartText)?.[1];
-    const pageId = /pageId: ([^\\n]+)/.exec(browserStartText)?.[1];
+    const sessionId = browserStartText.split("sessionId: ")[1]?.split(String.fromCharCode(10))[0];
+    const pageId = browserStartText.split("pageId: ")[1]?.split(String.fromCharCode(10))[0];
     expect(sessionId).toBeTruthy();
     expect(pageId).toBeTruthy();
 
