@@ -6,7 +6,7 @@ A local MCP server that gives a compatible MCP client tools for working inside o
 
 - List, read, and write files inside the configured project folder.
 - Run approved commands using **Windows PowerShell** or **WSL2 Bash**.
-- Open web pages in headless Chromium using Playwright and return page text.
+- Automate a headless Chromium browser with Playwright: tabs, navigation, clicks, forms, keyboard, scrolling, screenshots, downloads, PDF export, console/network diagnostics, accessibility inspection, and a restricted DevTools Protocol interface.
 - Read GitHub repository metadata and repository files when a GitHub token is configured.
 
 ## Requirements
@@ -16,7 +16,7 @@ A local MCP server that gives a compatible MCP client tools for working inside o
 - PowerShell (included with Windows; PowerShell 7 is recommended)
 - WSL2 only if you want to use the WSL shell option
 - A compatible MCP client, such as Claude Desktop
-- Chromium for browser tools
+- Chromium for browser tools (installed with `npx playwright install chromium`)
 
 ## 1. Download the project
 
@@ -76,7 +76,14 @@ After connecting, ask the MCP client to list the files in your selected project.
 - `read_project_file`
 - `write_project_file`
 - `run_project_command`
-- `browser_open_page`
+- `browser_start_session`, `browser_close_session`
+- `browser_open_page`, `browser_new_tab`, `browser_list_tabs`, `browser_close_tab`
+- `browser_navigate`, `browser_navigate_history`
+- `browser_click`, `browser_fill`, `browser_type`, `browser_press_key`, `browser_select_option`, `browser_set_checked`, `browser_hover`, `browser_scroll`, `browser_wait_for`
+- `browser_get_page_content`, `browser_get_element_info`, `browser_screenshot`
+- `browser_get_console_logs`, `browser_get_network_events`, `browser_clear_diagnostics`
+- `browser_evaluate`, `browser_devtools_command`, `browser_get_accessibility_tree`
+- `browser_set_viewport`, `browser_set_dialog_action`, `browser_upload_file`, `browser_download_file`, `browser_save_pdf`
 - `github_get_repository` and `github_read_file` (only when GITHUB_TOKEN is configured)
 
 ## 5. Use PowerShell or WSL2
@@ -115,5 +122,18 @@ For sensitive work, use a dedicated low-privilege OS account or a properly isola
 ## Current integration scope
 
 This repository includes a Claude Desktop setup example. Other MCP clients must support connecting to a local stdio MCP server and have their own local-server configuration mechanism. Do not assume the server is automatically connected to ChatGPT just because the code is on GitHub.
+
+## Browser automation capabilities
+
+Start with `browser_start_session`, then use the returned `sessionId` and `pageId` with the browser tools. The browser runs headlessly in Chromium. Sessions are isolated and in-memory; cookies and browser storage are not persisted after the session closes.
+
+The browser toolset supports page and tab management, navigation history, CSS/text locator actions, form filling, keyboard input, scrolling, selector waits, visible text and HTML extraction, element inspection, PNG/JPEG screenshots returned as image content, console and page-error logs, request/response/failure diagnostics, a restricted Chrome DevTools Protocol command allowlist, accessibility-tree inspection, JavaScript expression evaluation, file upload from inside PROJECT_ROOT, file download to PROJECT_ROOT, and PDF export.
+
+Important limits:
+- Browser sessions are not logged into your personal Chrome profile and do not reuse its cookies.
+- DevTools Protocol commands are intentionally allowlisted; this is not unrestricted access to every Chromium internal command.
+- JavaScript evaluation can execute code in the page and should only be used on websites you trust.
+- Downloads and uploads are restricted to PROJECT_ROOT; uploads are limited to 25 MB and downloads to 100 MB.
+- The network guard blocks many private/local destinations, but is defense in depth, not a replacement for OS-level network isolation.
 
 This is an initial development version. Build and test it locally before relying on it for important work.
