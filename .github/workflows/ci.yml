@@ -29,4 +29,4 @@ jobs:
         continue-on-error: true
       - name: Summarize dependency audit
         if: always()
-        run: node -e "const a=JSON.parse(require('node:fs').readFileSync('npm-audit.json','utf8')); for (const [n,v] of Object.entries(a.vulnerabilities || {})) console.log(n + ': ' + v.severity + '; direct=' + v.isDirect + '; fix=' + JSON.stringify(v.fixAvailable))"
+        run: node -e "const a=JSON.parse(require('node:fs').readFileSync('npm-audit.json','utf8')); for (const [n,v] of Object.entries(a.vulnerabilities || {})) console.log(n + ':' + v.severity + '; direct=' + v.isDirect + '; fix=' + JSON.stringify(v.fixAvailable))"
