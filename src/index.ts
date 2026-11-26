@@ -14,6 +14,6 @@ registerTerminalTool(server, config.projectRoot, {
   timeoutMs: config.terminalTimeoutMs,
   maxOutputChars: config.terminalMaxOutputChars
 });
-registerBrowserTools(server);
+registerBrowserTools(server, config.projectRoot);
 registerGitHubTools(server, config.githubToken);
 await server.connect(new StdioServerTransport());
