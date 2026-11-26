@@ -318,7 +318,7 @@ export function registerBrowserTools(server: any, projectRoot: string): void {
     if (selector) {
       const locator = target.page.locator(selector).first();
       await locator.scrollIntoViewIfNeeded();
-      await locator.evaluate((element, args) => element.scrollBy(args.x, args.y), {
+      await locator.evaluate((element, args) => (element as HTMLElement).scrollBy(args.x, args.y), {
         x: direction === "left" ? -pixels : direction === "right" ? pixels : 0,
         y: direction === "up" ? -pixels : direction === "down" ? pixels : 0
       });
@@ -468,7 +468,7 @@ export function registerBrowserTools(server: any, projectRoot: string): void {
   }, async ({ action, sessionId }) => {
     const session = await getSession(sessionId);
     session.dialogAction = action;
-    return result("Future JavaScript dialogs will be automatically " + action + "ed.");
+    return result("Future JavaScript dialogs will be automatically " + (action === "accept" ? "accepted." : "dismissed."));
   });
 
   register(server, "browser_upload_file", "Upload a file from inside PROJECT_ROOT into a file input. Files outside the project are not accessible.", {
