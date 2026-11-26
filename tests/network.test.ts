@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPublicIpAddress } from "../src/security/network.js";
+import { assertPublicHttpUrl, isPublicIpAddress } from "../src/security/network.js";
 
 describe("browser network address policy", () => {
   it.each([
@@ -23,5 +23,17 @@ describe("browser network address policy", () => {
 
   it("allows a global-unicast IPv6 address", () => {
     expect(isPublicIpAddress("2606:4700:4700::1111")).toBe(true);
+  });
+
+  it.each([
+    "http://localhost/",
+    "http://service.local/",
+    "http://127.0.0.1/",
+    "http://169.254.169.254/latest/meta-data/",
+    "http://[::1]/",
+    "http://user:secret@example.com/",
+    "file:///etc/passwd"
+  ])("rejects unsafe browser URL %s", async (url) => {
+    await expect(assertPublicHttpUrl(url)).rejects.toThrow();
   });
 });
